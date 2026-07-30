@@ -1,0 +1,45 @@
+{
+  "name": "gym-whatsapp-booking-bot",
+  "version": "1.0.0",
+  "description": "Gym WhatsApp Booking Bot backend service automating trainer and client session bookings via WhatsApp Cloud API",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:format": "prisma format"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.0",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "node-cron": "^3.0.3",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/node-cron": "^3.0.11",
+    "eslint": "^9.20.1",
+    "nodemon": "^3.1.9",
+    "prettier": "^3.5.1",
+    "prisma": "^6.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2"
+  }
+}

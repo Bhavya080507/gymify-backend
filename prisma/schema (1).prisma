@@ -1,0 +1,202 @@
+// Prisma Schema for Gym WhatsApp Booking Bot
+// Target Database: MySQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  TRAINER
+  CLIENT
+}
+
+enum PackageStatus {
+  ACTIVE
+  EXPIRED
+  EXHAUSTED
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  PUBLISHED
+  ON_LEAVE
+}
+
+enum SlotStatus {
+  AVAILABLE
+  FULL
+}
+
+enum BookingStatus {
+  CONFIRMED
+}
+
+enum ConversationStep {
+  IDLE
+  WAITING_MENU_SELECTION
+  WAITING_SLOT_INPUT
+  WAITING_FOR_SLOTS
+  SCHEDULE_PUBLISHED
+  ON_LEAVE
+  WAITING_BOOK_OR_SKIP
+  WAITING_SLOT_SELECTION
+  BOOKED
+  SKIPPED
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model Gym {
+  id          String   @id @default(uuid())
+  name        String
+  phoneNumber String?  @map("phone_number")
+  timezone    String   @default("Asia/Kolkata")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  trainers Trainer[]
+  clients  Client[]
+
+  @@map("gyms")
+}
+
+model Trainer {
+  id          String   @id @default(uuid())
+  gymId       String   @map("gym_id")
+  name        String
+  phoneNumber String   @unique @map("phone_number")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  gym       Gym               @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  clients   Client[]
+  schedules TrainerSchedule[]
+
+  @@index([gymId])
+  @@map("trainers")
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  gymId       String   @map("gym_id")
+  trainerId   String   @map("trainer_id")
+  name        String
+  phoneNumber String   @unique @map("phone_number")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  gym             Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  trainer         Trainer          @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  sessionPackages SessionPackage[]
+  bookings        Booking[]
+
+  @@index([gymId])
+  @@index([trainerId])
+  @@map("clients")
+}
+
+model SessionPackage {
+  id                String        @id @default(uuid())
+  clientId          String        @map("client_id")
+  totalSessions     Int           @map("total_sessions")
+  remainingSessions Int           @map("remaining_sessions")
+  status            PackageStatus @default(ACTIVE)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("session_packages")
+}
+
+model TrainerSchedule {
+  id           String         @id @default(uuid())
+  trainerId    String         @map("trainer_id")
+  scheduleDate DateTime       @db.Date @map("schedule_date")
+  status       ScheduleStatus @default(SCHEDULED)
+  publishedAt  DateTime?      @map("published_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  trainer Trainer @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  slots   Slot[]
+
+  @@unique([trainerId, scheduleDate])
+  @@index([trainerId])
+  @@index([scheduleDate])
+  @@map("trainer_schedules")
+}
+
+model Slot {
+  id               String     @id @default(uuid())
+  scheduleId       String     @map("schedule_id")
+  startTimeMinutes Int        @map("start_time_minutes") // Minutes from midnight (e.g. 1080 = 18:00 / 6 PM)
+  endTimeMinutes   Int?       @map("end_time_minutes")   // Optional end time in minutes from midnight
+  displayTime      String?    @map("display_time")       // Formatted time label (e.g. "6 PM")
+  displayOrder     Int        @default(0) @map("display_order") // Order for WhatsApp interactive buttons / list
+  capacity         Int        @default(2)
+  status           SlotStatus @default(AVAILABLE)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  schedule TrainerSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([scheduleId, startTimeMinutes])
+  @@index([scheduleId])
+  @@index([scheduleId, displayOrder])
+  @@map("slots")
+}
+
+model Booking {
+  id          String        @id @default(uuid())
+  slotId      String        @map("slot_id")
+  clientId    String        @map("client_id")
+  bookingDate DateTime      @db.Date @map("booking_date")
+  status      BookingStatus @default(CONFIRMED)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  slot   Slot   @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, bookingDate])
+  @@index([slotId])
+  @@index([clientId])
+  @@index([bookingDate])
+  @@map("bookings")
+}
+
+model ConversationState {
+  id                String           @id @default(uuid())
+  phoneNumber       String           @unique @map("phone_number")
+  userRole          UserRole         @map("user_role")
+  currentState      ConversationStep @default(IDLE) @map("current_state")
+  contextData       Json?            @map("context_data")
+  lastInteractionAt DateTime         @default(now()) @updatedAt @map("last_interaction_at")
+
+  @@index([phoneNumber])
+  @@map("conversation_states")
+}
+
+model WebhookIdempotencyLog {
+  id          String   @id @default(uuid())
+  messageId   String   @unique @map("message_id")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("webhook_idempotency_logs")
+}
