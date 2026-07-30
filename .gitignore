@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Environment variables
+.env
+.env.local
+!.env.example
+
+# Database / Prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# Logs
+logs
+*.log
+
+# System files
+.DS_Store
+
+# Test coverage
+coverage
+
+# IDE settings
+.vscode/settings.json
