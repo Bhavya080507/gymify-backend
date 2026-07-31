@@ -1,13 +1,14 @@
 import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import webhookRoutes from './routes/webhook.routes.js';
 
 const app = express();
 
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-
+app.use('/', webhookRoutes);
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.url}`);
